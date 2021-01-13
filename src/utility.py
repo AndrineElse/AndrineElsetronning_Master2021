@@ -309,8 +309,6 @@ def get_X_y(decomp_type, feature_type, normal = True,
 
 
 def get_t(y, sr):
-    duration = float(len(y)) / sr
-    T = 1.0/sr
-    N = int(duration / T)
-    t = np.linspace(0.0, N*T, N)
+    n = len(y)
+    t = np.linspace(0, 1/ sr, n)
     return t
