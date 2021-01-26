@@ -19,7 +19,7 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 
 
-
+module_path = os.path.abspath(os.path.join('../..'))
 
 
 from sklearn.decomposition import PCA
@@ -242,7 +242,23 @@ def denoise_audio(audio):
 
 
 
-def get_X_y(decomp_type, feature_type, normal = True,
+def remove_unpure_samples(df):
+    path = module_path + '/data/crackleWheeze/'
+    crackle = os.listdir(path + 'crackle/')
+    wheeze = os.listdir(path + 'wheeze/')
+    none = os.listdir(path + 'none/')
+    both = os.listdir(path + 'both/')
+
+    for idx, row in df.iterrows():
+        filename = row['name']
+        if (filename in wheeze) or (filename in both):
+            df = df.drop(idx, axis = 0)
+
+    df.reset_index(drop=True)
+    return df
+
+
+def get_X_y(decomp_type, feature_type, pure = True,normal = True,
             fs_filter = False,
             fs_auto_encoder = False,
             fs_pca = False, k = 10):
@@ -254,7 +270,10 @@ def get_X_y(decomp_type, feature_type, normal = True,
     dataset = pd.read_csv(f'../../features/{decomp_type}_2000.csv',  sep=',')
     dataset = dataset.drop('Unnamed: 0', axis = 1)
 
+    if pure:
+        dataset = remove_unpure_samples(dataset)
     X, y = dataset.iloc[:, :-2], dataset.iloc[:, -1]
+
 
     ##### Only extracting features (simple, HOS or MFCC) #############
     cols = []
