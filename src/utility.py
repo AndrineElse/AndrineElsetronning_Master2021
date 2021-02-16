@@ -21,6 +21,14 @@ from sklearn.feature_selection import chi2
 
 module_path = os.path.abspath(os.path.join('../..'))
 
+from matplotlib.font_manager import FontProperties
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib
+from matplotlib.colors import LinearSegmentedColormap
+font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 10, weight = 1000)
+font_small = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 8, weight = 1000)
+
 
 from sklearn.decomposition import PCA
 
@@ -267,7 +275,8 @@ def get_X_y(decomp_type, feature_type, pure = True,normal = True,
     Feature type: simple, HOS or MFCC
     k: NB! k has to be 10 or 30 if fs_auto_encoder is True
     '''
-    dataset = pd.read_csv(f'../../features/{decomp_type}_2000.csv',  sep=',')
+    
+    dataset = pd.read_csv(module_path + f'/features/{decomp_type}_2000.csv',  sep=',')
     dataset = dataset.drop('Unnamed: 0', axis = 1)
 
     if pure:
@@ -331,3 +340,38 @@ def get_t(y, sr):
     n = len(y)
     t = np.linspace(0, 1/ sr, n)
     return t
+
+
+def plot_cm(cm, color_index):
+    colors = ["#F94144", "#F3722C", '#F8961E', '#F9C74F','#90BE6D', '#43AA8B','#577590']
+
+    font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 10, weight = 1000)
+
+    colors_2 = ['#FFFFFF', colors[color_index]]
+    cmap_name = 'my colormap'
+    font_small = FontProperties(fname =  module_path + '/src/visualization/CharterRegular.ttf', size = 6, weight = 1000)
+
+    cm_map = LinearSegmentedColormap.from_list(cmap_name, colors_2)
+    class_names = ['crackle', 'no-crackle']
+
+
+    f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
+    f.set_size_inches(2, 2)
+
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    ax = sns.heatmap(cm, annot=True,
+                fmt='.2%', cmap=cm_map, xticklabels=class_names,yticklabels=class_names )
+    cbar = ax.collections[0].colorbar
+    for label in ax.get_yticklabels() :
+        label.set_fontproperties(font_small)
+    for label in ax.get_xticklabels() :
+        label.set_fontproperties(font_small)
+    ax.set_ylabel('True Label', fontproperties = font)
+    ax.set_xlabel('Predicted Label', fontproperties = font)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation = 0)
+
+    for child in ax.get_children():
+        if isinstance(child, matplotlib.text.Text):
+            child.set_fontproperties(font)
+    for l in cbar.ax.yaxis.get_ticklabels():
+        l.set_fontproperties(font_small)
