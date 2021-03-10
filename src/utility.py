@@ -17,9 +17,10 @@ import os
 from sklearn import preprocessing
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
+from sklearn.metrics import confusion_matrix
 
 
-module_path = os.path.abspath(os.path.join('../..'))
+module_path = os.path.abspath(os.path.join('..'))
 
 from matplotlib.font_manager import FontProperties
 import matplotlib.pyplot as plt
@@ -342,21 +343,28 @@ def get_t(y, sr):
     return t
 
 
-def plot_cm(cm, color_index):
-    colors = ["#F94144", "#F3722C", '#F8961E', '#F9C74F','#90BE6D', '#43AA8B','#577590']
+def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class_names = ['no-crackle', 'crackle' ], hex_color_str = None):
+    cm = confusion_matrix(y_true, y_pred)
+    colors = ['#F94144', '#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#90BE6D', '#43AA8B', '#4D908E', '#577590', '#277DA1']
 
     font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 10, weight = 1000)
-
-    colors_2 = ['#FFFFFF', colors[color_index]]
+    
+    
+    if hex_color_str:
+        colors_2 = ['#FFFFFF', hex_color_str]
+    elif color_index:
+        colors_2 = ['#FFFFFF', colors[color_index]]
+    else: 
+        colors_2 = ['#FFFFFF', colors[0]]
     cmap_name = 'my colormap'
     font_small = FontProperties(fname =  module_path + '/src/visualization/CharterRegular.ttf', size = 6, weight = 1000)
 
     cm_map = LinearSegmentedColormap.from_list(cmap_name, colors_2)
-    class_names = ['crackle', 'no-crackle']
+
 
 
     f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
-    f.set_size_inches(2, 2)
+    f.set_size_inches(5, 5)
 
     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     ax = sns.heatmap(cm, annot=True,
