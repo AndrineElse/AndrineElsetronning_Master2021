@@ -19,6 +19,7 @@ warnings.filterwarnings(action='ignore', category=FitFailedWarning)
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
 
     
 def compare_classifiers(X_train, y_train, X_test, y_test, clf_dict , grid_dict = None, param_dict = None, thresh_fixed= 5, folds_fixed= 10):            
@@ -35,7 +36,8 @@ def compare_classifiers(X_train, y_train, X_test, y_test, clf_dict , grid_dict =
         y_pred = clf_initial.predict(X_val)
         new_y = pd.Series(np.hstack([y_pred != y_val]))
 
-        clf = LogisticRegression(random_state=0, solver = 'liblinear',penalty = 'l1', class_weight = 'balanced')
+        #clf = LogisticRegression(random_state=0, solver = 'liblinear',penalty = 'l1', class_weight = 'balanced')
+        clf = SVC(gamma='auto', class_weight = 'balanced')
         if 'True' not in list(new_y.astype(str)):
              return None, None
         clf.fit(new_X,new_y)
