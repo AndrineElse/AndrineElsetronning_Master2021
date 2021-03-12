@@ -148,7 +148,7 @@ def hyperparam_search(X_train, y_train, X_test, y_test, clf_dict, grid_dict = No
         for folds in folds_list:
             if thresh > folds:
                 continue
-            print(f'Testing fold = {folds}, and threshold = {thresh}')
+            #print(f'Testing fold = {folds}, and threshold = {thresh}')
             temp_dict, _ = compare_classifiers(X_train, y_train, X_test, y_test, clf_dict, grid_dict, thresh_fixed = thresh, folds_fixed = folds)
             for key, val in temp_dict.items():
                 diff = val['filtered'] - val['original']
@@ -167,6 +167,6 @@ def add_noise_dataset(X, ampl = 1, noise_amount = 6 ):
     for [idx, row] in X.iterrows():
         if idx in noise_indices:
             sig = row.tolist()
-            noise = np.random.RandomState(seed=1).normal(0, ampl, len(sig))
+            noise = np.random.RandomState(seed=idx%10).normal(0, ampl, len(sig))
             new_X.iloc[idx] = pd.Series(sig + noise)
     return new_X , noise_indices
