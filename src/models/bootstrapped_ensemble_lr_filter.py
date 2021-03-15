@@ -36,8 +36,8 @@ def compare_classifiers(X_train, y_train, X_test, y_test, clf_dict , grid_dict =
         y_pred = clf_initial.predict(X_val)
         new_y = pd.Series(np.hstack([y_pred != y_val]))
 
-        #clf = LogisticRegression(random_state=0, solver = 'liblinear',penalty = 'l1', class_weight = 'balanced')
-        clf = SVC(gamma='auto', class_weight = 'balanced')
+        clf = LogisticRegression(random_state=0, solver = 'liblinear',penalty = 'l1', class_weight = 'balanced')
+        #clf = SVC(gamma='auto', class_weight = 'balanced')
         if 'True' not in list(new_y.astype(str)):
              return None, None
         clf.fit(new_X,new_y)
@@ -115,20 +115,16 @@ def compare_classifiers(X_train, y_train, X_test, y_test, clf_dict , grid_dict =
 
         X_test_2, y_test_2, keep = filter_test_set_ensemble()
 
-        def print_and_plot_to_compare():
+        def get_acc1_acc2():
             y_pred = clf_init.predict(X_test)
             acc_1 = accuracy_score(y_test, y_pred)
-            #print(f'Accuracy score for the initial classification: {acc_1} ')
-            #utility.plot_cm(y_test, y_pred, module_path = module_path, class_names = ['no-crackle', 'crackle'], color_index = 5)
 
             y_pred_2 = clf_init.predict(X_test_2)
             acc_2 = accuracy_score(y_test_2, y_pred_2)
-            #print(f'Accuracy score for the double classification: {acc_2} ')
-            #utility.plot_cm(y_test_2, y_pred_2, module_path = module_path, class_names = ['no-crackle', 'crackle'], color_index = 2)
             return {'original': acc_1, 'filtered': acc_2}
 
 
-        result_dict[name] = print_and_plot_to_compare()
+        result_dict[name] = get_acc1_acc2()
         new_test_dict[name] = keep
     return result_dict, new_test_dict
 

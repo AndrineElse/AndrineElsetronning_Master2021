@@ -3,29 +3,26 @@ import pandas as pd
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import f1_score, accuracy_score
-from sklearn.cluster import KMeans, Birch
+from sklearn.cluster import Birch
 
 from sklearn.model_selection import StratifiedKFold
 
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
 warnings.simplefilter('error', UndefinedMetricWarning)
-
-import numpy as np
-import random
-
-random.seed(10)
-import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 
+import random
+random.seed(10)
 
-def get_f1_acc_metric(true, pred):
+def get_f1_acc_metric(true, pred): # A performance metric that wants to maximize both accuracy and f1-score at the same time. 
+    # NB! Unsure if this metric is sufficient, might just be better to use f1 score 
     try:
         f1 = f1_score(true, pred)
     except UndefinedMetricWarning: 
         return 0
+    return f1
     acc = accuracy_score(true, pred)
-    #return f1
     return np.sqrt(f1**2 + acc**2)
     
 
@@ -33,15 +30,38 @@ def bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
                                      clf_dict, grid_dict = None,
                                      param_dict = None,
                                      clusters_fixed = 20,
-                                     thresh_fixed = 2, folds = 8):
+                                     thresh_fixed = 2, folds = 10):
+    '''Uses BIRCH clustering to find clusters of data which will perform badly on a set classifier
+
+    Args:
+        X_train (pandas.DataFrame): Training set feature samples, with indices [0 , 1, ... , n training samples] and columns [0, 1, ... , n features]
+        y_train (pandas.Series): Training set label samples, with indices [0 , 1, ... , n training samples] 
+        X_test (pandas.DataFrame): Testing set feature samples, with indices [0 , 1, ... , n testing samples] and columns [0, 1, ... , n features]
+        y_test (pandas.Series): Testing set label samples, with indices [0 , 1, ... , n testing samples] 
+
+        clf_dict (Dictionary): Format -->  classifier name/ID (str) : classifier (sklearn type classifier)
+
+        grid_dict (Dictionary, optional): Format --> classifier name/ID (str) : grid of hyperparameter-space to search (Dictionary). Defaults to None. 
+
+        param_dict (Dictonary, optional): Contains the hyperparameters found in a hyperparameter search. Defaults to None.
+
+        clusters_fixed (int, optional): Number of clusters to form. Defaults to 20.
+        thresh_fixed (int, optional): Threshold for how many ensembles needs to vote for a cluster to keep the cluster. Defaults to 2.
+        folds (int, optional): Number of folds to split the training set into, when forming the bootstrapped ensemble cluster voter. Defaults to 8.
+
+    Returns:
+        result_dict [Dictionary]: Contains useful information to perform a hyperparameter search. Format --> 
+            classifier name/ID (str) :
+                'performance' : The performance of the classifier on each of the formed clusters (np.array)
+                'keep clusters' : The number ID of the clusters to keep in the test set (np.array)
+
+        indices_dict [Dictionary] : Format --> classifier name/ID (str) : Indices to keep in the testing set (np.array)
+    '''
+
     result_dict = {}
     indices_dict = {}
     
-    
-    # Loop through all the classifiers 
-    
     for name, clf in clf_dict.items():
-
         # See if hyperparameters are already found 
         if param_dict and (name in param_dict.keys()): 
             clusters = param_dict[name]['custers']
@@ -64,9 +84,10 @@ def bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
             clf_dict[name] = clf_init
         else: 
             clf_init = clf.fit(X_train, y_train)
-            
+
         model = Birch(n_clusters=clusters).fit(X_train)
 
+    
         def get_metric_vector(X_test_temp, y_test_temp, clf_fold, cluster_marked):
             me = []
             for idx in range(clusters): 
@@ -96,22 +117,19 @@ def bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
         
         def get_best_clusters_mask(X_test_temp, y_test_temp, clf_fold):
             cluster_marked = model.predict(X_test_temp) 
-
-            # Get the resulting metrics (sqt(acc ^2 + f1 ^2)) for each of the current clusters
             m = get_metric_vector(X_test_temp, y_test_temp, clf_fold, cluster_marked)
 
-            #mean_metrics = np.mean(m) - np.std(m)
-            #mean_metrics = np.median(m)
-            #keep_clusters = m >= mean_metrics # Mask of which clusters to keep. If True, then keep the cluster
             keep_clusters = m > min(m)
             return keep_clusters
 
         
         def clustering_based_filter():
-            '''
-            Uses stratified k fold to split the dataset into temporary training and validation sets, to find the best performing clusters.
-            In the end the ensembles 'votes' for which clusters to keep in the test set. 
-            If two or more ensembles has voted for a cluster as the worst performing one, then this cluster is removed from the test set. 
+            ''' Uses stratified k folds to create a bootstrapped ensemble voter to decide on the best performing clusters 
+
+            Returns:
+                cluster_perf (np.array): Performance of each of the clusters 
+                keep_indices (np.array): Indices to keep in the testing set, because performance will likely be sufficient
+                keep_clusters (np.array): The number ID of the clusters to keep in the test set
             '''
             ensemble_mask = []
             skf = StratifiedKFold(n_splits=folds)
@@ -128,12 +146,13 @@ def bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
 
             best_cluster_mask = np.array(ensemble_mask).sum(axis = 0) > thresh 
 
-            ## Using the best cluster mask on the test set
             keep_clusters = np.where(best_cluster_mask == True)[0] 
 
-            metrics, keep_indices =  get_test_indices_best_clusters(keep_clusters)
+            cluster_perf, keep_indices =  get_test_indices_best_clusters(keep_clusters)
 
-            return metrics, keep_indices, keep_clusters
+            return cluster_perf, keep_indices, keep_clusters
+
+
 
         if best_clusters is not None:
             metric, indices = get_test_indices_best_clusters(best_clusters)
@@ -150,40 +169,89 @@ def bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
     return result_dict, indices_dict
 
 
-def hyperparam_search(X_train, y_train, X_test, y_test,
+def hyperparam_search(X_train, y_train, X_val, y_val,
                                      clf_dict, grid_dict = None,
                                      clusters_list = [10], thresh_list = [2]):
+    '''
+    Performes a search for the hyperparameters which will give the best filtering. 
+    The best clustering is defined as the one where there is maximum difference in performance between the average cluster and the worst cluster
+
+    Args:
+        X_train (pandas.DataFrame): Training set feature samples, with indices [0 , 1, ... , n training samples] and columns [0, 1, ... , n features]
+        y_train (pandas.Series): Training set label samples, with indices [0 , 1, ... , n training samples] 
+        X_val (pandas.DataFrame): Validation set feature samples, with indices [0 , 1, ... , n validation samples] and columns [0, 1, ... , n features]
+        y_val (pandas.Series): Validation set label samples, with indices [0 , 1, ... , n validation samples] 
+
+        clf_dict (Dictionary): Format -->  classifier name/ID (str) : classifier (sklearn type classifier)
+
+
+        grid_dict (Dictionary, optional): Format --> classifier name/ID (str) : grid of hyperparameter-space to search (Dictionary). Defaults to None. 
+        clusters_list (list, optional): Number of clusters to test out. Defaults to [10].
+        thresh_list (list, optional): List of thresholds to try out for the ensemble voter. Defaults to [2].
+
+    Returns:
+        param_dict (Dictionary): The optimal found hyperparameters. Format -->
+        classifier name/ID (str) : 
+            'clusters' : Number of clusters (int)
+            'threshold' : Threshold for ensemble voter (int)
+            'keep clusters' : Cluster IDs that performed well, that should be kept when testing
+    '''
+                                   
     max_diff = {key: 0 for key, val in clf_dict.items()}
-    return_dict = {}
+    param_dict = {}
     for t in thresh_list:
         for k in clusters_list:
-            #print(f'Testing number of clusters = {k}, and threshold = {t}')
-            temp_dict, _ = bootstrapped_ensemble_cluster_filter(X_train, y_train, X_test, y_test,
+            temp_dict, _ = bootstrapped_ensemble_cluster_filter(X_train, y_train, X_val, y_val,
                                          clf_dict, grid_dict,
                                          clusters_fixed = k, thresh_fixed = t)
 
             for key, val in temp_dict.items():
                 perf = val['performance']
                 diff = np.mean(perf) - np.min(perf[np.nonzero(perf)])
-                #diff = np.mean(metrics) - min(metrics) # Need to fix return value to make this the filtering criteria
+                #diff = np.median(perf) - np.min(perf[np.nonzero(perf)])
+                #diff = np.mean(perf) - np.min(perf)
 
-                #diff = val['filtered'] - val['original']
                 if diff > max_diff[key]:
                     max_diff[key] = diff
-                    return_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
+                    param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
                 
-    return return_dict
+    return param_dict
 
-def hyperparam_search_alt(X_train, y_train, X_test, y_test,
+def hyperparam_search_noise(X_train, y_train, X_test, y_test,
                                      clf_dict, grid_dict = None,
-                                     clusters_list = [10], thresh_list = [2]):         
+                                     clusters_list = [10], thresh_list = [2]): 
+    '''
+    Performes a search for the hyperparameters which will give the best filtering. 
+    The best clustering is defined as the one which filters the most samples which contain noise. 
+    Simulated noise is added in the hyperparameter search. 
+
+    Args:
+        X_train (pandas.DataFrame): Training set feature samples, with indices [0 , 1, ... , n training samples] and columns [0, 1, ... , n features]
+        y_train (pandas.Series): Training set label samples, with indices [0 , 1, ... , n training samples] 
+        X_val (pandas.DataFrame): Validation set feature samples, with indices [0 , 1, ... , n validation samples] and columns [0, 1, ... , n features]
+        y_val (pandas.Series): Validation set label samples, with indices [0 , 1, ... , n validation samples] 
+
+        clf_dict (Dictionary): Format -->  classifier name/ID (str) : classifier (sklearn type classifier)
+
+
+        grid_dict (Dictionary, optional): Format --> classifier name/ID (str) : grid of hyperparameter-space to search (Dictionary). Defaults to None. 
+        clusters_list (list, optional): Number of clusters to test out. Defaults to [10].
+        thresh_list (list, optional): List of thresholds to try out for the ensemble voter. Defaults to [2].
+
+    Returns:
+        param_dict (Dictionary): The optimal found hyperparameters. Format -->
+        classifier name/ID (str) : 
+            'clusters' : Number of clusters (int)
+            'threshold' : Threshold for ensemble voter (int)
+            'keep clusters' : Cluster IDs that performed well, that should be kept when testing
+    '''    
     max_diff = {key: 0 for key, val in clf_dict.items()}
-    return_dict = {}
+    param_dict = {}
+
     for t in thresh_list:
         for k in clusters_list:
-            #print(f'Testing number of clusters = {k}, and threshold = {t}')
-            noise_X, n_idx= add_noise_dataset(X_test, random.randint(1,20), random.randint(3,8))
-            results, indices = bootstrapped_ensemble_cluster_filter(X_train, y_train, noise_X, y_test,
+            noise_X, n_idx= add_noise_dataset(X_test, random.randint(10,30), random.randint(3,8))
+            temp_dict, indices = bootstrapped_ensemble_cluster_filter(X_train, y_train, noise_X, y_test,
                                          clf_dict, grid_dict,
                                          clusters_fixed = k, thresh_fixed = t)
             
@@ -200,25 +268,18 @@ def hyperparam_search_alt(X_train, y_train, X_test, y_test,
             
             amount_of_noise_removed = alt_optimal_check()
 
-            for key, val in results.items():
+            for key, val in temp_dict.items():
                 if amount_of_noise_removed[key] > max_diff[key]:
                     max_diff[key] = amount_of_noise_removed[key]
-                    return_dict[key] = {'custers': k, 'threshold': t}
-    '''                
-    for name, prop in return_dict.items():
-        k = prop['custers']
-        model = KMeans(n_clusters=k, random_state = 1)
-        model.fit(X_train)
-        new_y = model.predict(X_train)
-        print(f'Optimal clustering for {name}: {k} - clusters \n')
-        f = scatterplot_with_colors(X_train.values, new_y)
-        plt.show()'''
-    return return_dict
+                    param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
+
+
+    return param_dict
 
 
 def add_noise_dataset(X, ampl = 10, noise_amount = 4):
     '''
-    noise amount is inverse, meaning higher noise amout, means less noise... 
+    Noise amount is inverse, meaning higher noise amout, smaller fraction of samples will be effected by noise
     '''
     noise_indices = np.random.RandomState(seed=1).permutation(X.index.tolist())[0:len(X)//noise_amount]
     new_X = X.copy()
@@ -229,9 +290,14 @@ def add_noise_dataset(X, ampl = 10, noise_amount = 4):
             new_X.iloc[idx] = pd.Series((sig + noise).tolist())
     return new_X , noise_indices
 
-def get_results_dict(X_train, y_train, X_test, y_test, clf_dict, indices_dict):
-    results_dict = {}
+def get_results_dict(X_train, y_train, X_test, y_test, clf_dict, indices_dict): 
+    '''
+    Helping function to compare filtering ability
 
+    Returns:
+        result_dict (Dictionary): Compares the accuracy of the entire test set 'original', vs the accuracy score of the 'filtered' test set
+    '''
+    results_dict = {}
     for clf_name, clf in clf_dict.items():
         clf.fit(X_train, y_train)
         init = accuracy_score(y_test, clf.predict(X_test))
