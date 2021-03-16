@@ -1,6 +1,5 @@
-import os
-import sys
-module_path = os.path.abspath(os.path.join('../..'))
+from os import path
+module_path = path.abspath(path.join('../..'))
 
 from keras.layers import Input, Dense
 from keras.models import Model
@@ -12,8 +11,6 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 
-
-import pprint
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -82,7 +79,7 @@ def scatterplot_with_colors(X, y):
     colorsDict = {idx : color for (idx, color) in enumerate(colors)}
     colorsDict[-1] = '#484848'
     f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
-    f.set_size_inches(5, 5)
+    f.set_size_inches(4, 4)
     grouped = df.groupby('label')
     for key, group in grouped:
         label_key = key
@@ -125,12 +122,16 @@ def add_noise_dataset(X, ampl = 10, noise_amount = 4):
 def get_auc_scores(X_test, y_test, clf_dict, indices):
     auc_curve_svm ={}
     auc_curve_init = {}
+    removed_data = {}
     for name, idx in indices.items():
         pred = clf_dict[name].predict(X_test.iloc[idx])
-        fpr, tpr, thresholds = metrics.roc_curve(y_test.iloc[idx], pred)
+        fpr, tpr, _ = metrics.roc_curve(y_test.iloc[idx], pred)
         auc_curve_svm[name] = metrics.auc(fpr, tpr)
 
         pred = clf_dict[name].predict(X_test)
-        fpr, tpr, thresholds = metrics.roc_curve(y_test, pred)
+        fpr, tpr, _ = metrics.roc_curve(y_test, pred)
         auc_curve_init[name] = metrics.auc(fpr, tpr)
-    return auc_curve_init , auc_curve_svm
+        
+        
+        removed_data[name] = len(idx)/len(X_test)
+    return auc_curve_init , auc_curve_svm, removed_data

@@ -6,11 +6,12 @@ from sklearn.metrics import f1_score, accuracy_score
 from sklearn.cluster import Birch
 
 from sklearn.model_selection import StratifiedKFold
+from itertools import product
 
-import warnings
+from warnings import simplefilter, filterwarnings
 from sklearn.exceptions import UndefinedMetricWarning
-warnings.simplefilter('error', UndefinedMetricWarning)
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+simplefilter('error', UndefinedMetricWarning)
+filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 
 import random
 random.seed(10)
@@ -199,21 +200,22 @@ def hyperparam_search(X_train, y_train, X_val, y_val,
                                    
     max_diff = {key: 0 for key, val in clf_dict.items()}
     param_dict = {}
-    for t in thresh_list:
-        for k in clusters_list:
-            temp_dict, _ = bootstrapped_ensemble_cluster_filter(X_train, y_train, X_val, y_val,
-                                         clf_dict, grid_dict,
-                                         clusters_fixed = k, thresh_fixed = t)
+    
+    param_combos = list(product(thresh_list, clusters_list))
+    for (t, k) in param_combos:
+        temp_dict, _ = bootstrapped_ensemble_cluster_filter(X_train, y_train, X_val, y_val,
+                                     clf_dict, grid_dict,
+                                     clusters_fixed = k, thresh_fixed = t)
 
-            for key, val in temp_dict.items():
-                perf = val['performance']
-                diff = np.mean(perf) - np.min(perf[np.nonzero(perf)])
-                #diff = np.median(perf) - np.min(perf[np.nonzero(perf)])
-                #diff = np.mean(perf) - np.min(perf)
+        for key, val in temp_dict.items():
+            perf = val['performance']
+            diff = np.mean(perf) - np.min(perf[np.nonzero(perf)])
+            #diff = np.median(perf) - np.min(perf[np.nonzero(perf)])
+            #diff = np.mean(perf) - np.min(perf)
 
-                if diff > max_diff[key]:
-                    max_diff[key] = diff
-                    param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
+            if diff > max_diff[key]:
+                max_diff[key] = diff
+                param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
                 
     return param_dict
 
@@ -247,31 +249,30 @@ def hyperparam_search_noise(X_train, y_train, X_test, y_test,
     '''    
     max_diff = {key: 0 for key, val in clf_dict.items()}
     param_dict = {}
+    param_combos = list(product(thresh_list, clusters_list))
+    for (t, k) in param_combos:
+        noise_X, n_idx= add_noise_dataset(X_test, random.randint(10,30), random.randint(3,8))
+        temp_dict, indices = bootstrapped_ensemble_cluster_filter(X_train, y_train, noise_X, y_test,
+                                     clf_dict, grid_dict,
+                                     clusters_fixed = k, thresh_fixed = t)
 
-    for t in thresh_list:
-        for k in clusters_list:
-            noise_X, n_idx= add_noise_dataset(X_test, random.randint(10,30), random.randint(3,8))
-            temp_dict, indices = bootstrapped_ensemble_cluster_filter(X_train, y_train, noise_X, y_test,
-                                         clf_dict, grid_dict,
-                                         clusters_fixed = k, thresh_fixed = t)
-            
-            def alt_optimal_check():
-                amount_of_noise_removed = {}
-                for name, vals in indices.items():
-                    keep = indices[name] 
-                    count = 0
-                    for idx in n_idx:
-                        if idx not in keep: 
-                            count = count + 1
-                    amount_of_noise_removed[name] = (count/len(n_idx))
-                return amount_of_noise_removed
-            
-            amount_of_noise_removed = alt_optimal_check()
+        def alt_optimal_check():
+            amount_of_noise_removed = {}
+            for name, vals in indices.items():
+                keep = indices[name] 
+                count = 0
+                for idx in n_idx:
+                    if idx not in keep: 
+                        count = count + 1
+                amount_of_noise_removed[name] = (count/len(n_idx))
+            return amount_of_noise_removed
 
-            for key, val in temp_dict.items():
-                if amount_of_noise_removed[key] > max_diff[key]:
-                    max_diff[key] = amount_of_noise_removed[key]
-                    param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
+        amount_of_noise_removed = alt_optimal_check()
+
+        for key, val in temp_dict.items():
+            if amount_of_noise_removed[key] > max_diff[key]:
+                max_diff[key] = amount_of_noise_removed[key]
+                param_dict[key] = {'custers': k, 'threshold': t, 'keep clusters': val['keep clusters']}
 
 
     return param_dict
@@ -289,19 +290,3 @@ def add_noise_dataset(X, ampl = 10, noise_amount = 4):
             noise = np.random.RandomState(seed=idx%10).normal(0, ampl, len(sig))
             new_X.iloc[idx] = pd.Series((sig + noise).tolist())
     return new_X , noise_indices
-
-def get_results_dict(X_train, y_train, X_test, y_test, clf_dict, indices_dict): 
-    '''
-    Helping function to compare filtering ability
-
-    Returns:
-        result_dict (Dictionary): Compares the accuracy of the entire test set 'original', vs the accuracy score of the 'filtered' test set
-    '''
-    results_dict = {}
-    for clf_name, clf in clf_dict.items():
-        clf.fit(X_train, y_train)
-        init = accuracy_score(y_test, clf.predict(X_test))
-        filtered = accuracy_score(y_test[indices_dict[clf_name]],
-                                  clf.predict(X_test.iloc[indices_dict[clf_name]]))
-        results_dict[clf_name] = {'original': init, 'filtered': filtered}
-    return results_dict
