@@ -15,9 +15,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 from matplotlib.colors import LinearSegmentedColormap
+
 font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 11, weight = 1000)
 font_small = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 8, weight = 1000)
-
 
 
 def get_dim_reduced_X(X, method, X_train = None, y_train = None):
@@ -37,7 +37,7 @@ def get_dim_reduced_X(X, method, X_train = None, y_train = None):
         
     ## TSNE   
     elif method == 'tsne':
-        X_new = TSNE(n_components= 2).fit_transform(X)
+        X_new = TSNE(n_components= 2, random_state = 0).fit_transform(X)
     else:
         print('Need to specify a dimentionality reduction technique')
         return None
@@ -73,34 +73,55 @@ def get_trained_encoder(X_train, y_train, red_dim = 10):
     return encoder
 
 
-def scatterplot_with_colors(X, y):
-    df = pd.DataFrame(dict(x=X[:,0], y=X[:,1], label=y))
+def scatterplot_with_colors(X, y, module_path = module_path, new_legends = None, x_y_labels = None):
+    font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 11, weight = 1000)
+    font_small = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 8, weight = 1000)
+    x_label = 'x'
+    y_label = 'y'
+    if x_y_labels:
+        x_label = x_y_labels[0]
+        y_label = x_y_labels[1]
+        
+    df = pd.DataFrame({x_label : X[:,0], 
+                       y_label : X[:,1],
+                       'label' : y})
+    
+    
     colors = ['#F94144', '#90BE6D', '#577590','#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#43AA8B', '#4D908E', '#277DA1']
     colorsDict = {idx : color for (idx, color) in enumerate(colors)}
     colorsDict[-1] = '#484848'
     f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
     f.set_size_inches(4, 4)
+    
+        
     grouped = df.groupby('label')
+    
     for key, group in grouped:
         label_key = key
         if key == -1:
             label_key = 'deleted samples'
-        ax = group.plot(ax=ax, kind='scatter', x='x', y='y',
+        ax = group.plot(ax=ax, kind='scatter', x=x_label,y=y_label,
                         label=label_key, color=colorsDict[key] ,
-                        s = 7, alpha=0.8)
+                        s = 3, alpha=0.8)
 
 
     for label in ax.get_ylabel() :
-        ax.set_ylabel(label, fontproperties = font)
+        ax.set_ylabel(y_label, fontproperties = font)
     for label in ax.get_xlabel() :
-        ax.set_xlabel(label, fontproperties = font)
+        ax.set_xlabel(x_label, fontproperties = font)
     for label in ax.get_yticklabels() :
         label.set_fontproperties(font)
     for label in ax.get_xticklabels() :
         label.set_fontproperties(font)
+    
     ax.legend(prop=font)
     
-    return f
+    if new_legends:
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, new_legends, prop = font)
+        
+    return f, ax
+
 
 
 def add_noise_dataset(X, ampl = 10, noise_amount = 4):

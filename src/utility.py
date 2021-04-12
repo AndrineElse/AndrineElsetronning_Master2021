@@ -19,6 +19,8 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 from sklearn.metrics import confusion_matrix
 
+from sktime.utils.data_io import load_from_tsfile_to_dataframe,load_from_arff_to_dataframe
+
 
 module_path = os.path.abspath(os.path.join('..'))
 
@@ -182,7 +184,7 @@ def downsample(audio, sr, sr_new = 8000):
     samps = round(secs*new_sr)     # Number of samples to downsample
     new_audio = resample(audio, samps)
 
-    return new_audio, new_sr
+    return new_audio
 
 
 #Will resample all files to the target sample rate and produce a 32bit float array
@@ -249,7 +251,13 @@ def denoise_audio(audio):
     denoised_audio =  pywt.waverec( coeff, 'db8' )
     return denoised_audio
 
+def get_entropy(timeseries):
+    timeseries_nz = timeseries[timeseries != 0]
+    return - np.sum(((timeseries_nz**2)*np.log(timeseries_nz**2)))
 
+def get_energy(timeseries):  
+    N = len(timeseries)
+    return np.sum(np.abs(timeseries) ** 2) / N
 
 def remove_unpure_samples(df):
     path = module_path + '/data/crackleWheeze/'
@@ -267,10 +275,10 @@ def remove_unpure_samples(df):
     return df
 
 
-def get_X_y(decomp_type, feature_type, pure = True,normal = True,
+def get_X_y(decomp_type, feature_type, pure = True,normal = False,
             fs_filter = False,
             fs_auto_encoder = False,
-            fs_pca = False, k = 10):
+            fs_pca = False, k = 10, module_path = module_path):
     '''
     Decomp type: noDecomp , EMD, EEMD, DWT, EMD_DWT, EEMD_DWT
     Feature type: simple, HOS or MFCC
@@ -280,8 +288,8 @@ def get_X_y(decomp_type, feature_type, pure = True,normal = True,
     dataset = pd.read_csv(module_path + f'/features/{decomp_type}_2000.csv',  sep=',')
     dataset = dataset.drop('Unnamed: 0', axis = 1)
 
-    if pure:
-        dataset = remove_unpure_samples(dataset)
+    #if pure:
+     #   dataset = remove_unpure_samples(dataset)
     X, y = dataset.iloc[:, :-2], dataset.iloc[:, -1]
 
 
@@ -342,6 +350,46 @@ def get_t(y, sr):
     t = np.linspace(0, 1/ sr, n)
     return t
 
+def convert_arff_to_ts(filepath, filename):
+    X, y = load_from_arff_to_dataframe(filepath + '/' + filename)
+    new_filename = filename[:-4] + 'ts'
+    print(new_filename)
+    dataset = filename.split('_')[0]
+    print(dataset)
+    
+    labels = np.unique(y).astype(str)
+    label_str = ''
+    for label in labels:
+        label_str = label_str + label + ' '
+    print(label_str)
+    w = open(filepath + '/' + new_filename, 'w+')
+    
+    w.write(f'@problemName {dataset} \n')
+    w.write('@timeStamps false \n')
+    w.write('@univariate true \n')
+    w.write(f'@classLabel true {label_str} \n')
+    w.write('@data \n')
+    for (idx, row) in X.iterrows():
+        new_row = (list(row)[0]).tolist()
+        new_row = str(new_row)[1:-1].replace(' ', '') + ':' + y[idx] + '\n'
+        w.write(new_row)
+        
+        
+def write_to_ts(filepath, X, y):
+    
+    w = open(filepath, 'w+')
+    
+    w.write('@problemName LungSoundsMiniROCKET \n')
+    w.write('@timeStamps false \n')
+    w.write('@missing false \n')
+    w.write('@univariate true \n')
+    w.write('@equalLength true \n')
+    w.write(f'@seriesLength {str(len(X.columns))} \n')
+    w.write('@classLabel true no_crackle crackle\n')
+    w.write('@data \n')
+    for (idx, row) in X.iterrows():
+        new_row = str((list(row)))[1:-1].replace(' ', '') + ':' + y[idx] + '\n'
+        w.write(new_row)
 
 def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class_names = ['no-crackle', 'crackle' ], hex_color_str = None):
     cm = confusion_matrix(y_true, y_pred)
@@ -383,3 +431,5 @@ def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class
             child.set_fontproperties(font)
     for l in cbar.ax.yaxis.get_ticklabels():
         l.set_fontproperties(font_small)
+        
+    return f,ax

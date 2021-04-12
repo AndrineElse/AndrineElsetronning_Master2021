@@ -4,7 +4,6 @@ import os
 
 module_path = os.path.abspath(os.path.join('../..'))
 
-import time
 from itertools import product 
 
 from warnings import filterwarnings
