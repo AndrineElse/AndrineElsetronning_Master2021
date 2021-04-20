@@ -394,7 +394,8 @@ def write_to_ts(filepath, X, y):
 def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class_names = ['no-crackle', 'crackle' ], hex_color_str = None):
     cm = confusion_matrix(y_true, y_pred)
     colors = ['#F94144', '#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#90BE6D', '#43AA8B', '#4D908E', '#577590', '#277DA1']
-
+    #colors = ['#F9414466', '#90BE6D66', '#57759066','#F3722C66', '#F8961E66',
+    #         '#F9844A66', '#F9C74F66', '#43AA8B66', '#4D908E66', '#277DA166']
     font = FontProperties(fname = module_path + '/src/visualization/CharterRegular.ttf', size = 10, weight = 1000)
     
     
@@ -412,7 +413,7 @@ def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class
 
 
     f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
-    f.set_size_inches(5, 5)
+    f.set_size_inches(3, 3)
 
     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     ax = sns.heatmap(cm, annot=True,

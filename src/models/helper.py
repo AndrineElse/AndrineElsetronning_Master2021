@@ -88,10 +88,14 @@ def scatterplot_with_colors(X, y, module_path = module_path, new_legends = None,
     
     
     colors = ['#F94144', '#90BE6D', '#577590','#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#43AA8B', '#4D908E', '#277DA1']
+    colors = ['#F9414466', '#90BE6D66', '#57759066','#F3722C66', '#F8961E66',
+              '#F9844A66', '#F9C74F66', '#43AA8B66', '#4D908E66', '#277DA166']
+
+    
     colorsDict = {idx : color for (idx, color) in enumerate(colors)}
     colorsDict[-1] = '#484848'
     f, ax = plt.subplots(1,1) # 1 x 1 array , can also be any other size
-    f.set_size_inches(4, 4)
+    f.set_size_inches(3, 3)
     
         
     grouped = df.groupby('label')
