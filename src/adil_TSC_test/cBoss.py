@@ -14,7 +14,7 @@ import numpy as np
 from time import time
 from sklearn.preprocessing import MinMaxScaler
 import pickle
-
+module_path = os.path.abspath(os.path.join('../..'))
 
 cwd = os.path.abspath(os.path.join(''))
 
@@ -27,11 +27,7 @@ def get_dataset(ts_path):
     return load_from_tsfile_to_dataframe(ts_path)
     
     
-def run_cboss(X,y):
-    kwargs = dict(test_size=0.2, random_state=1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, **kwargs)
-
-   
+def run_cboss(X_train, X_test, y_train,y_test):
     cboss = ContractableBOSS(
         n_parameter_samples=50, max_ensemble_size=10, random_state=0
     )
@@ -59,11 +55,15 @@ def save_pred_proba(y_test, pred, proba):
 
 def main():
     start = time()
-    ts_path = cwd + '/data/test.ts'
+    ts_path_train = module_path + '/data/ts_files/UiT_5s_TRAIN.ts'
+    ts_path_test = module_path + '/data/ts_files/UiT_5s_TEST.ts'
     
-    X, y = get_dataset(ts_path)
+    path = module_path + '/src/adil_TSC_test/transformed_datasets/UiT'
     
-    y_test, y_pred, y_pred_proba = run_cboss(X,y)
+    X_train, y_train = get_dataset(ts_path_train)
+    X_test, y_test = get_dataset(ts_path_test)
+    
+    y_test, y_pred, y_pred_proba = run_cboss(X_train, X_test, y_train,y_test)
     
     save_pred_proba(y_test, y_pred, y_pred_proba)
     

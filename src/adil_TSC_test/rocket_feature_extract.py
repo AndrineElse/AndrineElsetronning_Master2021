@@ -9,6 +9,7 @@ import numpy as np
 from time import time
 from sklearn.preprocessing import MinMaxScaler
 
+module_path = os.path.abspath(os.path.join('../..'))
 
 cwd = os.path.abspath(os.path.join(''))
 
@@ -36,11 +37,7 @@ def get_dataset(ts_path):
     return load_from_tsfile_to_dataframe(ts_path)
     
     
-def run_catch22(X,y):
-    kwargs = dict(test_size=0.2, random_state=1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, **kwargs)
-
-   
+def run_catch22(X_train, X_test, y_train,y_test):
     ROCKET = Rocket(num_kernels=10_000)
     ROCKET.fit(X_train)
     
@@ -65,12 +62,12 @@ def run_catch22(X,y):
     
     return X_train_t, X_test_t, y_train, y_test
     
-def save_catch22_transform(X_train, X_test, y_train, y_test, ts_path):
+def save_catch22_transform(X_train, X_test, y_train, y_test, path_transformed, path_original):
     new_file_paths = {
-        ts_path.split('.')[0] + '_transformed_rocket_TRAIN.ts' : (X_train, y_train) ,
-        ts_path.split('.')[0] + '_transformed_rocket_TEST.ts' : (X_test, y_test) }
+        path_transformed + '_transformed_rocket_15s_TRAIN.ts' : (X_train, y_train) ,
+        path_transformed + '_transformed_rocket_15s_TEST.ts' : (X_test, y_test) }
     
-    metadata = get_metadata(ts_path)
+    metadata = get_metadata(path_original)
     
     for path, data in new_file_paths.items():
         w = open(path, 'w+')
@@ -85,17 +82,24 @@ def save_catch22_transform(X_train, X_test, y_train, y_test, ts_path):
 
 def main():
     start = time()
-    ts_path = cwd + '/data/test.ts'
+    ts_path_train = module_path + '/data/ts_files/UiT_15s_TRAIN.ts'
+    ts_path_test = module_path + '/data/ts_files/UiT_15s_TEST.ts'
+    #ts_path_train = module_path + '/data/ts_files/UiT_compressed_rms_TRAIN.ts'
+    #ts_path_test = module_path + '/data/ts_files/UiT_compressed_rms_TEST.ts'
     
-    X, y = get_dataset(ts_path)
+    path = module_path + '/src/adil_TSC_test/transformed_datasets/UiT'
     
-    X_train, X_test, y_train, y_test = run_catch22(X,y)
+    X_train, y_train = get_dataset(ts_path_train)
+    X_test, y_test = get_dataset(ts_path_test)
     
-    save_catch22_transform(X_train, X_test, y_train, y_test, ts_path)
+    
+    X_train, X_test, y_train, y_test = run_catch22(X_train, X_test, y_train,y_test)
+    
+    save_catch22_transform(X_train, X_test, y_train, y_test, path, ts_path_train)
     
     total_time = time() - start
     f = open(cwd + '/computation_times.txt', 'a')
-    f.write('ROCKET, ' + str(total_time) + '\n')
+    f.write('ROCKET 15s, ' + str(total_time) + '\n')
     print('Finished writing ROCKET transform')
     
 main()

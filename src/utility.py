@@ -391,6 +391,15 @@ def write_to_ts(filepath, X, y):
         new_row = str((list(row)))[1:-1].replace(' ', '') + ':' + y[idx] + '\n'
         w.write(new_row)
 
+# Color map
+#  Overcomputed feature space = 0
+#  ROCKET = 1
+#  CNN = 2
+#
+#
+#
+
+        
 def plot_cm(y_true, y_pred, module_path = module_path, color_index = None, class_names = ['no-crackle', 'crackle' ], hex_color_str = None):
     cm = confusion_matrix(y_true, y_pred)
     colors = ['#F94144', '#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#90BE6D', '#43AA8B', '#4D908E', '#577590', '#277DA1']
