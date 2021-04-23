@@ -22,10 +22,18 @@ from sktime.utils.data_io import load_from_tsfile_to_dataframe
 
 from sklearn.model_selection import train_test_split
 
+def change_labels(y):
+    y_new = y.copy()
 
-def get_dataset(ts_path):
-    return load_from_tsfile_to_dataframe(ts_path)
+    y_new[y_new == 'exp_wheeze'] = 'wheeze'
+    y_new[y_new == 'insp_wheeze'] = 'wheeze'
     
+    y_new[y_new == 'exp_crackle'] = 'crackle'
+    y_new[y_new == 'insp_crackle'] = 'crackle'
+    
+    return y_new
+
+
     
 def run_cboss(X_train, X_test, y_train,y_test):
     cboss = ContractableBOSS(
@@ -55,13 +63,17 @@ def save_pred_proba(y_test, pred, proba):
 
 def main():
     start = time()
-    ts_path_train = module_path + '/data/ts_files/UiT_5s_TRAIN.ts'
-    ts_path_test = module_path + '/data/ts_files/UiT_5s_TEST.ts'
+    X_train, y_train_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TRAIN.ts')
+    X_test, y_test_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TEST.ts')
+    X_val, y_val_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TEST.ts')
     
-    path = module_path + '/src/adil_TSC_test/transformed_datasets/UiT'
     
-    X_train, y_train = get_dataset(ts_path_train)
-    X_test, y_test = get_dataset(ts_path_test)
+    y_train = change_labels(y_train_)
+    y_test = change_labels(y_test_)
+    y_val = change_labels(y_val_)
+    
+    X_train = np.concatenate([X_train, X_val])
+    y_train = np.concatenate([y_train, y_val])
     
     y_test, y_pred, y_pred_proba = run_cboss(X_train, X_test, y_train,y_test)
     
