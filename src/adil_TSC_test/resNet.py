@@ -44,14 +44,14 @@ def main():
     y_train = change_labels(y_train_)
     y_test = change_labels(y_test_)
         
-    model = ResNetClassifier(nb_epochs=100, verbose=True)
+    model = ResNetClassifier(nb_epochs=50, verbose=True)
     model.fit(X_train, y_train)
     
     y_pred = model.predict(X_test)
     save_pred_proba(y_test, y_pred)
     
     #model.save(cwd + '/resNet5s')
-   # print('Model saved')
+    print('Model saved')
     
     total_time = time() - start
     f = open(cwd + '/computation_times.txt', 'a')
