@@ -34,18 +34,18 @@ def get_metadata(ts_path):
 
 def run_catch22(X_train, X_test, X_val, y_train,y_test, y_val):
     c22 = Catch22()
-    c22.fit(X_train, y_train)
+    #c22.fit(X_train, y_train)
     
-    X_train_t = c22.transform(X_train)
-    X_test_t = c22.transform(X_test)
-    X_val_t = c22.transform(X_val)
+    X_train_t = c22.fit_transform(X_train, y_train)
+    X_test_t = c22.fit_transform(X_test, y_test)
+    X_val_t = c22.fit_transform(X_val , y_val)
     return X_train_t, X_test_t, X_val_t , y_train, y_test, y_val
     
 def save_catch22_transform(X_train, X_test, X_val, y_train,y_test, y_val, path_transformed, path_original):
     new_file_paths = {
-        path_transformed + '_transformed_catch22_15s_TRAIN.ts' : (X_train, y_train) ,
-        path_transformed + '_transformed_catch22_15s_TEST.ts' : (X_test, y_test),
-        path_transformed + '_transformed_catch22_15s_VAL.ts' : (X_val, y_val)
+        path_transformed + '_transformed_catch22_5s_TRAIN.ts' : (X_train, y_train) ,
+        path_transformed + '_transformed_catch22_5s_TEST.ts' : (X_test, y_test),
+        path_transformed + '_transformed_catch22_5s_VAL.ts' : (X_val, y_val)
         }
     
     metadata = get_metadata(path_original)
@@ -63,9 +63,9 @@ def save_catch22_transform(X_train, X_test, X_val, y_train,y_test, y_val, path_t
 
 def main():
     start = time()
-    X_train, y_train = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_15s_TRAIN.ts')
-    X_test, y_test = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_15s_TEST.ts')
-    X_val, y_val = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_15s_VAL.ts')
+    X_train, y_train = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TRAIN.ts')
+    X_test, y_test = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TEST.ts')
+    X_val, y_val = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_VAL.ts')
     path_original = module_path + f'/data/ts_files/UiT_5s_TEST.ts'
     path_transformed = module_path + '/src/adil_TSC_test/transformed_datasets/UiT'
     
@@ -76,7 +76,7 @@ def main():
     
     total_time = time() - start
     f = open(cwd + '/computation_times.txt', 'a')
-    f.write('Catch22, ' + str(total_time) + '\n')
+    f.write('Catch22 5s, ' + str(total_time) + '\n')
     f.close()
     print('Finished writing catch22 transform')
     

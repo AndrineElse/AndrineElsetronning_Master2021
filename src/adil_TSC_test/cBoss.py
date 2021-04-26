@@ -65,15 +65,16 @@ def main():
     start = time()
     X_train, y_train_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TRAIN.ts')
     X_test, y_test_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TEST.ts')
-    X_val, y_val_ = load_from_tsfile_to_dataframe(module_path + f'/data/ts_files/UiT_5s_TEST.ts')
     
-    
+
     y_train = change_labels(y_train_)
     y_test = change_labels(y_test_)
-    y_val = change_labels(y_val_)
     
-    X_train = np.concatenate([X_train, X_val])
-    y_train = np.concatenate([y_train, y_val])
+    #X_train , X_test = X_train[:100] , X_test[:100]
+    #y_train , y_test = y_train[:100] , y_test[:100]
+    
+    #X_train = np.concatenate([X_train, X_val])
+    #y_train = np.concatenate([y_train, y_val])
     
     y_test, y_pred, y_pred_proba = run_cboss(X_train, X_test, y_train,y_test)
     
@@ -83,7 +84,7 @@ def main():
 
 
     f = open(cwd + '/computation_times.txt', 'a')
-    f.write('cboss, ' + str(total_time) + '\n')
+    f.write('cboss 5s, ' + str(total_time) + '\n')
     print('Finished writing cboss transform')
     
 main()
