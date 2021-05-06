@@ -5,3 +5,5 @@ src/models/dictionaries_filter_results
 notebooks/filtered.wav
 notebooks/unfiltered.wav
 features/extracted_features_ts_files/
+notebooks/test.wav
+notebooks/test1.wav
