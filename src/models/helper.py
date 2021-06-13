@@ -118,11 +118,11 @@ def scatterplot_with_colors(X, y, module_path = module_path, new_legends = None,
     for label in ax.get_xticklabels() :
         label.set_fontproperties(font)
     
-    ax.legend(prop=font)
+    #ax.legend(prop=font)
     
-    if new_legends:
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, new_legends, prop = font)
+
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, new_legends, prop = font)
         
     return f, ax
 
